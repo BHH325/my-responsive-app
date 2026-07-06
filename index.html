@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유도전류 및 전류에 의한 자기장 실험실</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons for UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* 방해되는 브라우저 스크롤/바운스 방지 */
+        }
+        /* Custom scrollbar for control panels */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Glow animation for active states */
+        .glow-indigo {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+
+        /* 600px 이하 스마트폰/태블릿 세로 1열 미디어 쿼리 */
+        @media (max-w: 600px) {
+            .responsive-btn-grid {
+                grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+            }
+            .responsive-flex-container {
+                flex-direction: column !important;
+            }
+            .responsive-footer-grid {
+                grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+                gap: 0.75rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 py-4 px-6 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-md shadow-indigo-500/20">
+                <i class="fa-solid fa-square-poll-vertical text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">가상 전자기학 실험실</h1>
+                <p class="text-xs text-slate-400 font-medium">Lenz & Ampere Law Simulator</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btn-show-formula" class="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-md shadow-amber-900/30">
+                <i class="fa-solid fa-calculator"></i> 공식 & 계산법 보기
+            </button>
+            <span id="experiment-title" class="px-3 py-1 bg-indigo-950 border border-indigo-800 text-indigo-300 rounded-full text-xs font-semibold tracking-wider uppercase">
+                실험 1: 유도전류 실험
+            </span>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow flex flex-col lg:flex-row p-4 gap-4 overflow-hidden">
+        <!-- Left: Canvas Area -->
+        <div class="flex-grow bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl relative flex flex-col overflow-hidden min-h-[400px] lg:min-h-0">
+            <!-- Canvas Controls Overlay -->
+            <div class="absolute top-4 left-4 z-10 flex gap-2">
+                <button id="btn-reset" class="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg text-xs flex items-center gap-1.5 transition active:scale-95 backdrop-blur-sm">
+                    <i class="fa-solid fa-arrow-rotate-right"></i> 초기화
+                </button>
+            </div>
+
+            <!-- Toast Message Center (for lenz/ampere laws explanations) -->
+            <div id="toast-container" class="absolute top-4 right-4 z-10 max-w-xs sm:max-w-md transition-all duration-300 pointer-events-none">
+                <div class="bg-slate-900/95 border border-indigo-500/30 text-slate-200 px-4 py-3 rounded-xl shadow-xl backdrop-blur-md flex items-start gap-3 transform translate-y-0 opacity-100 transition-all duration-300">
+                    <div class="bg-indigo-500/20 text-indigo-400 p-1.5 rounded-lg shrink-0 mt-0.5">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-xs text-indigo-300" id="toast-title">실험 힌트</h4>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed" id="toast-body">자석을 마우스나 손가락으로 드래그하여 코일 내부로 이동시켜 보세요!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Canvas -->
+            <div class="flex-grow w-full relative">
+                <canvas id="experiment-canvas" class="absolute top-0 left-0 w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+            </div>
+
+            <!-- Live Status Readout overlay -->
+            <div class="absolute bottom-4 left-4 right-4 bg-slate-900/95 border border-slate-800 rounded-xl p-3 backdrop-blur-sm flex flex-wrap gap-4 justify-around text-xs text-slate-300">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                    <span id="stat-primary">자석 위치: 대기 중</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                    <span id="stat-secondary">자기선속 변화율: 0.0 Wb/s</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse"></span>
+                    <span id="stat-tertiary">유도 전류: 0.0 mA</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Control Panel Area -->
+        <div class="w-full lg:w-96 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-6 shrink-0 shadow-xl overflow-y-auto">
+            <!-- Part 1: First Experiment (Magnet & Coil) Options -->
+            <div id="panel-exp1" class="flex flex-col gap-5">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-500"></i> 자석 및 코일 제어
+                </h3>
+
+                <!-- Sub-menu / Toggle Option: Magnet Polarity -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                    <label class="block text-xs font-semibold text-slate-400 mb-2">자석 극성 설정</label>
+                    <div class="grid grid-cols-2 gap-2 responsive-btn-grid">
+                        <button id="btn-polarity-ns" class="py-2 px-3 bg-indigo-600 text-white rounded-lg text-xs font-bold border border-indigo-500 shadow-md shadow-indigo-600/10 transition">
+                            왼쪽 N - 오른쪽 S
+                        </button>
+                        <button id="btn-polarity-sn" class="py-2 px-3 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-xs font-bold border border-slate-700 transition">
+                            왼쪽 S - 오른쪽 N
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slider 1: Coil turns -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-400">코일 감은 횟수 (N)</label>
+                        <span id="val-turns" class="text-xs font-bold text-indigo-400 bg-indigo-950/50 border border-indigo-900 px-2 py-0.5 rounded">200 회</span>
+                    </div>
+                    <input type="range" id="slide-turns" min="100" max="400" step="100" value="200" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>적음</span>
+                        <span>많음</span>
+                    </div>
+                </div>
+
+                <!-- Slider 2: Magnet Strength -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-400">자석 세기 (자기장 강도)</label>
+                        <span id="val-strength" class="text-xs font-bold text-indigo-400 bg-indigo-950/50 border border-indigo-900 px-2 py-0.5 rounded">중간</span>
+                    </div>
+                    <input type="range" id="slide-strength" min="1" max="3" step="1" value="2" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>약함</span>
+                        <span>보통</span>
+                        <span>강함</span>
+                    </div>
+                </div>
+
+                <!-- Helper Toggle -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-300 block">자기력선 표시</label>
+                        <span class="text-[10px] text-slate-500">자석 주위의 가상 자기력선을 시각화합니다.</span>
+                    </div>
+                    <button id="btn-toggle-field" class="w-12 h-6 bg-indigo-600 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner">
+                        <div class="w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6 transition duration-200"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Part 2: Second Experiment (Current's Magnetic Field) Options -->
+            <div id="panel-exp2" class="hidden flex flex-col gap-5">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-shapes text-cyan-500"></i> 도선 선택 및 전원 제어
+                </h3>
+
+                <!-- Sub-menu: 3 Wire Types selection -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1.5">
+                    <label class="block text-xs font-semibold text-slate-400 px-1 mb-1">도선 종류 선택</label>
+                    <button id="btn-wire-straight" class="w-full py-2.5 px-4 bg-cyan-600 text-white rounded-lg text-xs font-bold border border-cyan-500 flex items-center justify-between transition">
+                        <span><i class="fa-solid fa-arrows-up-down mr-2 text-cyan-200"></i> 직선 도선</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] opacity-70"></i>
+                    </button>
+                    <button id="btn-wire-circular" class="w-full py-2.5 px-4 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-xs font-bold border border-slate-700 flex items-center justify-between transition">
+                        <span><i class="fa-solid fa-circle-notch mr-2 text-cyan-600"></i> 원형 도선</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] opacity-70"></i>
+                    </button>
+                    <button id="btn-wire-solenoid" class="w-full py-2.5 px-4 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-xs font-bold border border-slate-700 flex items-center justify-between transition">
+                        <span><i class="fa-solid fa-wave-square mr-2 text-cyan-600"></i> 솔레노이드</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] opacity-70"></i>
+                    </button>
+                </div>
+
+                <!-- Power Polarity Switcher (전원 극성 설정) -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                    <label class="block text-xs font-semibold text-slate-400 mb-2">전원 단자 극성 (+ / -) 설정</label>
+                    <div class="grid grid-cols-2 gap-2 responsive-btn-grid">
+                        <button id="btn-polarity-pos-neg" class="py-2.5 px-2 bg-cyan-600 text-white rounded-lg text-[11px] font-bold border border-cyan-500 shadow-md shadow-cyan-600/10 transition active:scale-[0.98]">
+                            상단/좌측 (+) ↔ 하단/우측 (-)
+                        </button>
+                        <button id="btn-polarity-neg-pos" class="py-2.5 px-2 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-[11px] font-bold border border-slate-700 transition active:scale-[0.98]">
+                            상단/좌측 (-) ↔ 하단/우측 (+)
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                        * 전류는 항상 <span class="text-red-400 font-semibold">(+)극</span>에서 나와 <span class="text-blue-400 font-semibold">(-)극</span>으로 들어갑니다.
+                    </p>
+                </div>
+
+                <!-- Control: Current intensity / Polarity (Direction) -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-400">전류 방향 및 세기 미세 조정</label>
+                        <span id="val-current" class="text-xs font-bold text-cyan-400 bg-cyan-950/50 border border-cyan-900 px-2 py-0.5 rounded">순방향 (강하게)</span>
+                    </div>
+                    <input type="range" id="slide-current" min="-3" max="3" step="1" value="2" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>역방향 (-)</span>
+                        <span>0 (차단)</span>
+                        <span>순방향 (+)</span>
+                    </div>
+                </div>
+
+                <!-- Magnetic Field Line Option -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-300 block">도선 자기력선 표시</label>
+                        <span class="text-[10px] text-slate-500">도선 주위의 실시간 유도 자기력선을 투영합니다.</span>
+                    </div>
+                    <button id="btn-toggle-wire-field" class="w-12 h-6 bg-cyan-600 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner">
+                        <div class="w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6 transition duration-200"></div>
+                    </button>
+                </div>
+
+                <!-- Compass Probe Switch -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-300 block">나침반 센서 배치</label>
+                        <span class="text-[10px] text-slate-500">도선 주위에 나침반 배열을 배치해 정렬 방향을 봅니다.</span>
+                    </div>
+                    <button id="btn-toggle-compass" class="w-12 h-6 bg-slate-800 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner">
+                        <div class="w-4 h-4 bg-white rounded-full shadow-md transform translate-x-0 transition duration-200"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Common Scientific Explanation box -->
+            <div class="mt-auto bg-gradient-to-br from-slate-950 to-slate-900 p-4 rounded-xl border border-slate-800">
+                <h4 class="text-xs font-bold text-indigo-400 flex items-center gap-1.5 mb-1.5">
+                    <i class="fa-solid fa-graduation-cap"></i> <span id="explain-title">렌츠의 법칙 (Lenz's Law)</span>
+                </h4>
+                <p id="explain-desc" class="text-[11px] text-slate-400 leading-relaxed">
+                    유도 기전력의 방향은 자속의 변화를 방해하려는 방향으로 발생합니다. 자석이 접근하면 청력을, 멀어지면 인력을 유도하기 위해 코일에 기전력이 생깁니다.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Formula / Calculation Modal -->
+    <div id="formula-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                <div class="flex items-center gap-2 text-amber-400">
+                    <i class="fa-solid fa-book-open text-lg"></i>
+                    <h3 class="font-bold text-base text-slate-100">전자기학 핵심 물리 공식 & 계산법</h3>
+                </div>
+                <button id="btn-close-modal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto space-y-6 text-sm text-slate-300">
+                <!-- Section 1 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <h4 class="text-amber-400 font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider">
+                        <span class="px-1.5 py-0.5 bg-amber-900/40 text-amber-300 rounded text-[10px]">실험 1</span> 패러데이의 전자기 유도 법칙
+                    </h4>
+                    <p class="text-xs text-slate-400 mb-3">코일을 관통하는 자기선속(자속)의 시간적 변화율에 따라 유도 기전력이 결정됩니다.</p>
+                    <div class="bg-slate-900 p-3 rounded-lg text-center font-mono text-base text-indigo-300 border border-indigo-950/40 mb-3">
+                        V = -N · (ΔΦ / Δt)
+                    </div>
+                    <ul class="space-y-1.5 text-xs text-slate-400">
+                        <li>• <strong class="text-slate-300">V (V)</strong>: 유도 기전력</li>
+                        <li>• <strong class="text-slate-300">N (회)</strong>: 코일을 감은 총 횟수</li>
+                        <li>• <strong class="text-slate-300">ΔΦ / Δt (Wb/s)</strong>: 자속의 변화 속도</li>
+                        <li>• <strong class="text-slate-300">- (음의 부호)</strong>: 변화를 방해하려는 방향 (렌츠의 법칙)</li>
+                    </ul>
+                </div>
+
+                <!-- Section 2 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <h4 class="text-cyan-400 font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider">
+                        <span class="px-1.5 py-0.5 bg-cyan-900/40 text-cyan-300 rounded text-[10px]">실험 2-A</span> 직선 도선에 의한 자기장 (앙페르 법칙)
+                    </h4>
+                    <p class="text-xs text-slate-400 mb-3">전류가 흐르는 긴 직선 도선 주위에는 원형 모양의 자기장선이 형성됩니다.</p>
+                    <div class="bg-slate-900 p-3 rounded-lg text-center font-mono text-base text-cyan-300 border border-cyan-950/40 mb-3">
+                        B = k · (I / r)
+                    </div>
+                </div>
+
+                <!-- Section 3 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <h4 class="text-emerald-400 font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider">
+                        <span class="px-1.5 py-0.5 bg-emerald-900/40 text-emerald-300 rounded text-[10px]">실험 2-B</span> 원형 도선에 의한 자기장
+                    </h4>
+                    <p class="text-xs text-slate-400 mb-3">원형으로 구부러진 도선에 전류가 흐를 때 도선 중심에서의 자기장 세기입니다.</p>
+                    <div class="bg-slate-900 p-3 rounded-lg text-center font-mono text-base text-emerald-300 border border-emerald-950/40 mb-3">
+                        B = k' · (I / r)
+                    </div>
+                </div>
+
+                <!-- Section 4 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <h4 class="text-purple-400 font-bold mb-2 flex items-center gap-2 text-xs uppercase tracking-wider">
+                        <span class="px-1.5 py-0.5 bg-purple-900/40 text-purple-300 rounded text-[10px]">실험 2-C</span> 솔레노이드 내부의 자기장
+                    </h4>
+                    <p class="text-xs text-slate-400 mb-3">솔레노이드 내부는 균일하고 매우 조밀한 방향의 자기장이 생성됩니다.</p>
+                    <div class="bg-slate-900 p-3 rounded-lg text-center font-mono text-base text-purple-300 border border-purple-950/40 mb-3">
+                        B = k'' · n · I
+                    </div>
+                </div>
+            </div>
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-950 text-right">
+                <button id="btn-close-modal-bottom" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition">
+                    확인 및 닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom: Experiment Choice Tab Buttons & Copyright -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4 shrink-0 shadow-2xl flex flex-col gap-4">
+        <div class="max-w-4xl mx-auto w-full grid grid-cols-2 gap-3 responsive-footer-grid">
+            <button id="tab-exp1" class="flex items-center justify-center gap-3 py-3 px-4 bg-indigo-950 border border-indigo-700/80 hover:bg-indigo-900/50 text-indigo-200 rounded-xl transition duration-200 shadow-md shadow-indigo-950/20 active:scale-[0.98]">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-magnet text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <div class="text-xs font-bold">실험 1</div>
+                    <div class="text-[11px] text-slate-400">자석과 코일에 대한 유도전류 실험</div>
+                </div>
+            </button>
+            <button id="tab-exp2" class="flex items-center justify-center gap-3 py-3 px-4 bg-slate-800 border border-slate-700 hover:bg-slate-750 text-slate-400 rounded-xl transition duration-200 active:scale-[0.98]">
+                <div class="w-8 h-8 rounded-lg bg-slate-750 text-slate-400 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-bolt text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <div class="text-xs font-bold text-slate-300">실험 2</div>
+                    <div class="text-[11px] text-slate-400">전류에 의한 자기장 실험</div>
+                </div>
+            </button>
+        </div>
+        
+        <!-- Copyright & Producer Tag (제작자 변희하 표시) -->
+        <div class="border-t border-slate-800/60 pt-3 text-center">
+            <p class="text-[11px] text-slate-500 tracking-wider">
+                &copy; 2026 가상 전자기학 실험실. All Rights Reserved. Produced by <span class="text-indigo-400 font-bold">변희하</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript logic -->
+    <script>
+        // Setup state variables
+        let activeTab = 'exp1'; // 'exp1' or 'exp2'
+        let currentWireType = 'straight'; // 'straight', 'circular', 'solenoid'
+
+        // Experiment 1 State
+        const exp1State = {
+            magnetPolarity: 'NS', // 'NS' (left-to-right) or 'SN'
+            coilTurns: 200,
+            magnetStrength: 2, // 1 (weak), 2 (normal), 3 (strong)
+            showField: true,
+            magnetX: 180,
+            magnetY: 0,
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            lastX: 180,
+            lastTime: 0,
+            magnetSpeed: 0, 
+            inducedCurrent: 0,
+            galvanometerAngle: 0, 
+            sparkIntensity: 0 
+        };
+
+        // Experiment 2 State
+        const exp2State = {
+            currentValue: 2, // -3 to +3
+            showCompass: false,
+            showWireField: true, 
+            compasses: [] 
+        };
+
+        // Canvas Setup
+        const canvas = document.getElementById('experiment-canvas');
+        const ctx = canvas.getContext('2d');
+        let width = 0;
+        let height = 0;
+
+        // System setup: handle resize
+        function resizeCanvas() {
+            const rect = canvas.parentNode.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            width = rect.width;
+            height = rect.height;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            if (!exp1State.isDragging) {
+                exp1State.magnetY = height / 2;
+                if (exp1State.magnetX === 180 || exp1State.magnetX > width) {
+                    exp1State.magnetX = width * 0.25;
+                }
+            }
+            initCompasses();
+        }
+
+        // Initialize multiple interactive compasses for Exp 2
+        function initCompasses() {
+            exp2State.compasses = [];
+            if (currentWireType === 'straight') {
+                exp2State.compasses = [
+                    { x: width * 0.40, y: height * 0.35, angle: 0 },
+                    { x: width * 0.40, y: height * 0.65, angle: 0 },
+                    { x: width * 0.60, y: height * 0.35, angle: 0 },
+                    { x: width * 0.60, y: height * 0.65, angle: 0 }
+                ];
+            } else if (currentWireType === 'circular') {
+                exp2State.compasses = [
+                    { x: width * 0.50, y: height * 0.50, angle: 0 }, 
+                    { x: width * 0.32, y: height * 0.50, angle: 0 }, 
+                    { x: width * 0.68, y: height * 0.50, angle: 0 }  
+                ];
+            } else { // solenoid
+                exp2State.compasses = [
+                    { x: width * 0.35, y: height * 0.50, angle: 0 }, 
+                    { x: width * 0.50, y: height * 0.50, angle: 0 }, 
+                    { x: width * 0.65, y: height * 0.50, angle: 0 }, 
+                    { x: width * 0.50, y: height * 0.28, angle: 0 }, 
+                    { x: width * 0.50, y: height * 0.72, angle: 0 }  
+                ];
+            }
+        }
+
+        // DOM Elements
+        const tabExp1Btn = document.getElementById('tab-exp1');
+        const tabExp2Btn = document.getElementById('tab-exp2');
+        const panelExp1 = document.getElementById('panel-exp1');
+        const panelExp2 = document.getElementById('panel-exp2');
+        const expTitle = document.getElementById('experiment-title');
+
+        // Modal Elements
+        const btnShowFormula = document.getElementById('btn-show-formula');
+        const formulaModal = document.getElementById('formula-modal');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnCloseModalBottom = document.getElementById('btn-close-modal-bottom');
+
+        // Polarity Buttons (Exp 2)
+        const btnPolarityPosNeg = document.getElementById('btn-polarity-pos-neg');
+        const btnPolarityNegPos = document.getElementById('btn-polarity-neg-pos');
+
+        // Modal Event Listeners
+        btnShowFormula.addEventListener('click', () => formulaModal.classList.remove('hidden'));
+        const hideModal = () => formulaModal.classList.add('hidden');
+        btnCloseModal.addEventListener('click', hideModal);
+        btnCloseModalBottom.addEventListener('click', hideModal);
+        formulaModal.addEventListener('click', (e) => { if (e.target === formulaModal) hideModal(); });
+
+        // Toggle Tabs UI
+        tabExp1Btn.addEventListener('click', () => {
+            activeTab = 'exp1';
+            tabExp1Btn.className = "flex items-center justify-center gap-3 py-3 px-4 bg-indigo-950 border border-indigo-700/80 text-indigo-200 rounded-xl transition duration-200 shadow-md shadow-indigo-950/20 active:scale-[0.98]";
+            tabExp2Btn.className = "flex items-center justify-center gap-3 py-3 px-4 bg-slate-800 border border-slate-700 hover:bg-slate-750 text-slate-400 rounded-xl transition duration-200 active:scale-[0.98]";
+            
+            panelExp1.classList.remove('hidden');
+            panelExp2.classList.add('hidden');
+            expTitle.innerText = "실험 1: 유도전류 실험";
+            expTitle.className = "px-3 py-1 bg-indigo-950 border border-indigo-800 text-indigo-300 rounded-full text-xs font-semibold tracking-wider uppercase";
+            
+            document.getElementById('explain-title').innerText = "렌츠의 법칙 (Lenz's Law)";
+            document.getElementById('explain-desc').innerText = "유도 기전력의 방향은 자속의 변화를 방해하려는 방향으로 발생합니다. 자석이 접근하면 청력을, 멀어지면 인력을 유도하기 위해 코일에 기전력이 생깁니다.";
+            
+            updateToast("실험 힌트", "자석을 드래그하여 코일 내부로 왕복시켜 보세요. 속도가 빠를수록, 자석이 강할수록 검류계가 더 크게 요동칩니다!");
+            
+            exp1State.magnetX = width * 0.25;
+            exp1State.magnetY = height / 2;
+        });
+
+        tabExp2Btn.addEventListener('click', () => {
+            activeTab = 'exp2';
+            tabExp2Btn.className = "flex items-center justify-center gap-3 py-3 px-4 bg-cyan-950 border border-cyan-700/80 text-cyan-200 rounded-xl transition duration-200 shadow-md shadow-cyan-950/20 active:scale-[0.98]";
+            tabExp1Btn.className = "flex items-center justify-center gap-3 py-3 px-4 bg-slate-800 border border-slate-700 hover:bg-slate-750 text-slate-400 rounded-xl transition duration-200 active:scale-[0.98]";
+            
+            panelExp2.classList.remove('hidden');
+            panelExp1.classList.add('hidden');
+            expTitle.innerText = "실험 2: 전류에 의한 자기장 실험";
+            expTitle.className = "px-3 py-1 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded-full text-xs font-semibold tracking-wider uppercase";
+            
+            updateExplainForWire();
+            updateToast("실험 힌트", "단자 극성 설정 버튼이나 전류 세기 슬라이더를 조작해 보세요.");
+            initCompasses();
+            updatePolarityButtons();
+        });
+
+        // Toast helper
+        function updateToast(title, body) {
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-body').innerText = body;
+        }
+
+        // Explain text helper for Exp 2
+        function updateExplainForWire() {
+            const title = document.getElementById('explain-title');
+            const desc = document.getElementById('explain-desc');
+            if (currentWireType === 'straight') {
+                title.innerText = "직선 도선과 앙페르 법칙";
+                desc.innerText = "직선 도선에 전류가 흐르면, 오른나사 방향(오른손 엄지손가락이 전류 방향일 때 나머지 네 손가락이 감싸쥐는 방향)으로 동심원 형태의 자기장이 만들어집니다.";
+            } else if (currentWireType === 'circular') {
+                title.innerText = "원형 도선과 자기장";
+                desc.innerText = "입체로 표현된 원형 도선 중심부는 수평 방향의 강한 자기장이 뚫고 지나가며, 도선 위아래의 교차 영역 주위로 고리 형태의 폐곡선 자기장이 형성됩니다.";
+            } else {
+                title.innerText = "솔레노이드의 내부 자기장";
+                desc.innerText = "수많은 원형 도선을 조밀하게 겹쳐놓은 기기입니다. 솔레노이드 내부에는 마치 커다란 자석이 들어있는 것처럼 축 방향의 고르고 조밀한 자기장선이 형성됩니다.";
+            }
+        }
+
+        // Exp 1: Wire Polarity toggle
+        const btnPolarityNS = document.getElementById('btn-polarity-ns');
+        const btnPolaritySN = document.getElementById('btn-polarity-sn');
+        btnPolarityNS.addEventListener('click', () => {
+            exp1State.magnetPolarity = 'NS';
+            btnPolarityNS.className = "py-2 px-3 bg-indigo-600 text-white rounded-lg text-xs font-bold border border-indigo-500 shadow-md shadow-indigo-600/10 transition";
+            btnPolaritySN.className = "py-2 px-3 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-xs font-bold border border-slate-700 transition";
+        });
+        btnPolaritySN.addEventListener('click', () => {
+            exp1State.magnetPolarity = 'SN';
+            btnPolaritySN.className = "py-2 px-3 bg-indigo-600 text-white rounded-lg text-xs font-bold border border-indigo-500 shadow-md shadow-indigo-600/10 transition";
+            btnPolarityNS.className = "py-2 px-3 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-xs font-bold border border-slate-700 transition";
+        });
+
+        // Exp 1: Sliders
+        const slideTurns = document.getElementById('slide-turns');
+        const valTurns = document.getElementById('val-turns');
+        slideTurns.addEventListener('input', (e) => {
+            exp1State.coilTurns = parseInt(e.target.value);
+            valTurns.innerText = `${exp1State.coilTurns} 회`;
+        });
+
+        const slideStrength = document.getElementById('slide-strength');
+        const valStrength = document.getElementById('val-strength');
+        slideStrength.addEventListener('input', (e) => {
+            exp1State.magnetStrength = parseInt(e.target.value);
+            const label = ["약함", "보통", "강함"];
+            valStrength.innerText = label[exp1State.magnetStrength - 1];
+        });
+
+        // Exp 1: Magnetic Field Toggle
+        const btnToggleField = document.getElementById('btn-toggle-field');
+        btnToggleField.addEventListener('click', () => {
+            exp1State.showField = !exp1State.showField;
+            const indicator = btnToggleField.querySelector('div');
+            if (exp1State.showField) {
+                btnToggleField.className = "w-12 h-6 bg-indigo-600 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner";
+                indicator.className = "w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6 transition duration-200";
+            } else {
+                btnToggleField.className = "w-12 h-6 bg-slate-800 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner";
+                indicator.className = "w-4 h-4 bg-white rounded-full shadow-md transform translate-x-0 transition duration-200";
+            }
+        });
+
+        // Exp 2: Wire Selection Toggle buttons
+        const btnStraight = document.getElementById('btn-wire-straight');
+        const btnCircular = document.getElementById('btn-wire-circular');
+        const btnSolenoid = document.getElementById('btn-wire-solenoid');
+
+        function setWireSelection(type, activeBtn, otherBtn1, otherBtn2) {
+            currentWireType = type;
+            activeBtn.className = "w-full py-2.5 px-4 bg-cyan-600 text-white rounded-lg text-xs font-bold border border-cyan-500 flex items-center justify-between transition";
+            
+            if (type === 'straight') {
+                activeBtn.querySelector('i').className = "fa-solid fa-arrows-up-down mr-2 text-cyan-200";
+                otherBtn1.querySelector('i').className = "fa-solid fa-circle-notch mr-2 text-cyan-600";
+                otherBtn2.querySelector('i').className = "fa-solid fa-wave-square mr-2 text-cyan-600";
+            } else if (type === 'circular') {
+                activeBtn.querySelector('i').className = "fa-solid fa-circle-notch mr-2 text-cyan-200";
+                otherBtn1.querySelector('i').className = "fa-solid fa-arrows-up-down mr-2 text-cyan-600";
+                otherBtn2.querySelector('i').className = "fa-solid fa-wave-square mr-2 text-cyan-600";
+            } else {
+                activeBtn.querySelector('i').className = "fa-solid fa-wave-square mr-2 text-cyan-200";
+                otherBtn1.querySelector('i').className = "fa-solid fa-arrows-up-down mr-2 text-cyan-600";
+                otherBtn2.querySelector('i').className = "fa-solid fa-circle-notch mr-2 text-cyan-600";
+            }
+
+            otherBtn1.className = "w-full py-2.5 px-4 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-xs font-bold border border-slate-700 flex items-center justify-between transition";
+            otherBtn2.className = "w-full py-2.5 px-4 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-xs font-bold border border-slate-700 flex items-center justify-between transition";
+
+            updateExplainForWire();
+            initCompasses();
+        }
+
+        btnStraight.addEventListener('click', () => setWireSelection('straight', btnStraight, btnCircular, btnSolenoid));
+        btnCircular.addEventListener('click', () => setWireSelection('circular', btnCircular, btnStraight, btnSolenoid));
+        btnSolenoid.addEventListener('click', () => setWireSelection('solenoid', btnSolenoid, btnStraight, btnCircular));
+
+        // Exp 2: Current control slider
+        const slideCurrent = document.getElementById('slide-current');
+        const valCurrent = document.getElementById('val-current');
+
+        function updateCurrentValueDisplay() {
+            const val = exp2State.currentValue;
+            if (val > 0) {
+                const levels = ["", "순방향 (약하게)", "순방향 (보통)", "순방향 (강하게)"];
+                valCurrent.innerText = levels[val];
+                valCurrent.className = "text-xs font-bold text-cyan-400 bg-cyan-950/50 border border-cyan-900 px-2 py-0.5 rounded";
+            } else if (val < 0) {
+                const levels = ["", "역방향 (약하게)", "역방향 (보통)", "역방향 (강하게)"];
+                valCurrent.innerText = levels[Math.abs(val)];
+                valCurrent.className = "text-xs font-bold text-red-400 bg-red-950/50 border border-red-900 px-2 py-0.5 rounded";
+            } else {
+                valCurrent.innerText = "전원 차단";
+                valCurrent.className = "text-xs font-bold text-slate-400 bg-slate-950/50 border border-slate-900 px-2 py-0.5 rounded";
+            }
+            updatePolarityButtons();
+        }
+
+        slideCurrent.addEventListener('input', (e) => {
+            exp2State.currentValue = parseInt(e.target.value);
+            updateCurrentValueDisplay();
+        });
+
+        // Toggle/Highlight Polarity Buttons dynamically based on currentValue
+        function updatePolarityButtons() {
+            const val = exp2State.currentValue;
+            if (val > 0) {
+                btnPolarityPosNeg.className = "py-2.5 px-2 bg-cyan-600 text-white rounded-lg text-[11px] font-bold border border-cyan-500 shadow-md shadow-cyan-600/10 transition active:scale-[0.98]";
+                btnPolarityNegPos.className = "py-2.5 px-2 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-[11px] font-bold border border-slate-700 transition active:scale-[0.98]";
+            } else if (val < 0) {
+                btnPolarityPosNeg.className = "py-2.5 px-2 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-[11px] font-bold border border-slate-700 transition active:scale-[0.98]";
+                btnPolarityNegPos.className = "py-2.5 px-2 bg-rose-600 text-white rounded-lg text-[11px] font-bold border border-rose-500 shadow-md shadow-rose-600/10 transition active:scale-[0.98]";
+            } else {
+                btnPolarityPosNeg.className = "py-2.5 px-2 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-[11px] font-bold border border-slate-700 transition active:scale-[0.98]";
+                btnPolarityNegPos.className = "py-2.5 px-2 bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg text-[11px] font-bold border border-slate-700 transition active:scale-[0.98]";
+            }
+        }
+
+        btnPolarityPosNeg.addEventListener('click', () => {
+            let currentMag = Math.abs(exp2State.currentValue);
+            if (currentMag === 0) currentMag = 2;
+            exp2State.currentValue = currentMag;
+            slideCurrent.value = currentMag;
+            updateCurrentValueDisplay();
+        });
+
+        btnPolarityNegPos.addEventListener('click', () => {
+            let currentMag = Math.abs(exp2State.currentValue);
+            if (currentMag === 0) currentMag = 2;
+            exp2State.currentValue = -currentMag;
+            slideCurrent.value = -currentMag;
+            updateCurrentValueDisplay();
+        });
+
+        // Exp 2: Compass Toggle
+        const btnToggleCompass = document.getElementById('btn-toggle-compass');
+        btnToggleCompass.addEventListener('click', () => {
+            exp2State.showCompass = !exp2State.showCompass;
+            const indicator = btnToggleCompass.querySelector('div');
+            if (exp2State.showCompass) {
+                btnToggleCompass.className = "w-12 h-6 bg-cyan-600 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner";
+                indicator.className = "w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6 transition duration-200";
+            } else {
+                btnToggleCompass.className = "w-12 h-6 bg-slate-800 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner";
+                indicator.className = "w-4 h-4 bg-white rounded-full shadow-md transform translate-x-0 transition duration-200";
+            }
+        });
+
+        // Exp 2: Show Wire Magnetic Field Lines Toggle
+        const btnToggleWireField = document.getElementById('btn-toggle-wire-field');
+        btnToggleWireField.addEventListener('click', () => {
+            exp2State.showWireField = !exp2State.showWireField;
+            const indicator = btnToggleWireField.querySelector('div');
+            if (exp2State.showWireField) {
+                btnToggleWireField.className = "w-12 h-6 bg-cyan-600 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner";
+                indicator.className = "w-4 h-4 bg-white rounded-full shadow-md transform translate-x-6 transition duration-200";
+            } else {
+                btnToggleWireField.className = "w-12 h-6 bg-slate-800 rounded-full p-1 transition duration-200 focus:outline-none relative shadow-inner";
+                indicator.className = "w-4 h-4 bg-white rounded-full shadow-md transform translate-x-0 transition duration-200";
+            }
+        });
+
+        // Reset system
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            exp1State.magnetX = width * 0.25;
+            exp1State.magnetY = height / 2;
+            exp1State.isDragging = false;
+            exp1State.inducedCurrent = 0;
+            exp1State.galvanometerAngle = 0;
+            
+            slideTurns.value = 200;
+            exp1State.coilTurns = 200;
+            valTurns.innerText = "200 회";
+
+            slideStrength.value = 2;
+            exp1State.magnetStrength = 2;
+            valStrength.innerText = "보통";
+
+            slideCurrent.value = 2;
+            exp2State.currentValue = 2;
+            updateCurrentValueDisplay();
+
+            initCompasses();
+            updateToast("초기화 완료", "실험 도구들이 제자리로 정렬되었습니다.");
+        });
+
+        // Mouse and Touch Event Handlers
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            // TouchEvent support
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            // MouseEvent support
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function checkOnMagnet(x, y) {
+            const magW = 140;
+            const magH = 45;
+            return (
+                x >= exp1State.magnetX - magW/2 &&
+                x <= exp1State.magnetX + magW/2 &&
+                y >= exp1State.magnetY - magH/2 &&
+                y <= exp1State.magnetY + magH/2
+            );
+        }
+
+        function onStart(e) {
+            if (activeTab !== 'exp1') return;
+            const pos = getPos(e);
+            if (checkOnMagnet(pos.x, pos.y)) {
+                exp1State.isDragging = true;
+                exp1State.dragStartX = pos.x - exp1State.magnetX;
+                exp1State.dragStartY = pos.y - exp1State.magnetY;
+                exp1State.lastX = exp1State.magnetX;
+                exp1State.lastTime = performance.now();
+            }
+        }
+
+        function onMove(e) {
+            if (activeTab !== 'exp1' || !exp1State.isDragging) return;
+            if (e.cancelable) e.preventDefault(); // 스크롤 방지
+            const pos = getPos(e);
+            exp1State.magnetX = Math.max(70, Math.min(width - 70, pos.x - exp1State.dragStartX));
+            exp1State.magnetY = Math.max(height/2 - 50, Math.min(height/2 + 50, pos.y - exp1State.dragStartY));
+        }
+
+        function onEnd() {
+            exp1State.isDragging = false;
+        }
+
+        // 데스크톱 마우스 리스너
+        canvas.addEventListener('mousedown', onStart);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onEnd);
+
+        // 모바일 및 하이브리드 터치 리스너
+        canvas.addEventListener('touchstart', onStart, { passive: false });
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onEnd);
+
+        // --- RENDERING / SIMULATION LOOP ---
+
+        // Magnet Field Lines (Exp 1)
+        function drawFieldLines(cx, cy, strength, polarity, colorHex) {
+            ctx.save();
+            ctx.strokeStyle = colorHex;
+            ctx.lineWidth = 1.6;
+            
+            const lines = 7;
+            const maxRadiusX = 230;
+            const maxRadiusY = 95;
+            const timePhase = performance.now() * 0.003;
+
+            for (let i = 1; i <= lines; i++) {
+                const ratio = i / lines;
+                const rx = maxRadiusX * ratio;
+                const ry = maxRadiusY * ratio;
+                
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                ctx.globalAlpha = 0.15 * strength * (1.1 - ratio);
+                ctx.stroke();
+
+                ctx.globalAlpha = 0.6 * (strength / 2);
+                ctx.fillStyle = colorHex;
+                
+                const arrowCount = 2;
+                for (let a = 0; a < arrowCount; a++) {
+                    const angleOffset = (a === 0 ? 0.5 : 1.5) * Math.PI;
+                    const flowingAngle = angleOffset + (polarity === 'NS' ? -1 : 1) * (timePhase % (Math.PI * 2)) * 0.1;
+                    const arrowX = cx + rx * Math.cos(flowingAngle);
+                    const arrowY = cy + ry * Math.sin(flowingAngle);
+                    
+                    ctx.save();
+                    ctx.translate(arrowX, arrowY);
+                    
+                    let tangentAngle = Math.atan2(ry * Math.cos(flowingAngle), -rx * Math.sin(flowingAngle));
+                    if (polarity === 'SN') tangentAngle += Math.PI;
+                    ctx.rotate(tangentAngle);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(-6, -4);
+                    ctx.lineTo(6, 0);
+                    ctx.lineTo(-6, 4);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            ctx.restore();
+        }
+
+        // Draw Coil base (Exp 1)
+        function drawCoil(cx, cy, turns) {
+            const coilWidth = 120;
+            const coilHeight = 110;
+            const loopSpacing = coilWidth / (turns / 50);
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(cx - coilWidth/2, cy + coilHeight/2);
+            ctx.bezierCurveTo(cx - coilWidth/2, cy + 130, cx - 110, cy + 110, cx - 110, cy + 140);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(cx + coilWidth/2 - loopSpacing, cy + coilHeight/2);
+            ctx.bezierCurveTo(cx + coilWidth/2, cy + 130, cx + 110, cy + 110, cx + 110, cy + 140);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < (turns / 40); i++) {
+                const x = cx - coilWidth/2 + (i * loopSpacing * 0.8);
+                
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(x + loopSpacing/2, cy, coilHeight/2, Math.PI * 0.5, Math.PI * 1.5);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#b45309';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(x + loopSpacing/2, cy, coilHeight/2, Math.PI * 0.5, Math.PI * 1.5);
+                ctx.stroke();
+            }
+        }
+
+        // Draw front part of loop (Exp 1)
+        function drawCoilFront(cx, cy, turns) {
+            const coilWidth = 120;
+            const coilHeight = 110;
+            const loopSpacing = coilWidth / (turns / 50);
+
+            for (let i = 0; i < (turns / 40); i++) {
+                const x = cx - coilWidth/2 + (i * loopSpacing * 0.8);
+                
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 7;
+                ctx.beginPath();
+                ctx.arc(x + loopSpacing/2, cy, coilHeight/2, Math.PI * 1.5, Math.PI * 0.5);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(x + loopSpacing/2, cy, coilHeight/2, Math.PI * 1.5, Math.PI * 0.5);
+                ctx.stroke();
+            }
+        }
+
+        // Draw Magnet (Exp 1)
+        function drawMagnet(x, y, polarity) {
+            const w = 140;
+            const h = 42;
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 8;
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 4;
+
+            // N (Red)
+            ctx.fillStyle = polarity === 'NS' ? '#ef4444' : '#3b82f6';
+            ctx.strokeStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.moveTo(x - w/2, y - h/2);
+            ctx.lineTo(x, y - h/2);
+            ctx.lineTo(x, y + h/2);
+            ctx.lineTo(x - w/2, y + h/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // S (Blue)
+            ctx.fillStyle = polarity === 'NS' ? '#3b82f6' : '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(x, y - h/2);
+            ctx.lineTo(x + w/2, y - h/2);
+            ctx.lineTo(x + w/2, y + h/2);
+            ctx.lineTo(x, y + h/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 15px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            if (polarity === 'NS') {
+                ctx.fillText('N', x - w/4, y);
+                ctx.fillText('S', x + w/4, y);
+            } else {
+                ctx.fillText('S', x - w/4, y);
+                ctx.fillText('N', x + w/4, y);
+            }
+
+            if (exp1State.isDragging) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - 6, y - 8); ctx.lineTo(x - 6, y + 8);
+                ctx.moveTo(x, y - 8); ctx.lineTo(x, y + 8);
+                ctx.moveTo(x + 6, y - 8); ctx.lineTo(x + 6, y + 8);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Galvanometer (Exp 1)
+        function drawGalvanometer(x, y, angle) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 12;
+
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, 55, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(x, y, 48, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            for (let d = -45; d <= 45; d += 15) {
+                const rad = (d - 90) * Math.PI / 180;
+                const startX = x + 40 * Math.cos(rad);
+                const startY = y + 40 * Math.sin(rad);
+                const endX = x + 46 * Math.cos(rad);
+                const endY = y + 46 * Math.sin(rad);
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#6366f1';
+            ctx.font = '900 14px "Noto Sans KR"';
+            ctx.textAlign = 'center';
+            ctx.fillText('G', x, y + 25);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '8px system-ui';
+            ctx.fillText('0', x, y - 31);
+            ctx.fillText('-', x - 25, y - 22);
+            ctx.fillText('+', x + 25, y - 22);
+
+            ctx.restore();
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(0, 5);
+            ctx.lineTo(0, -38);
+            ctx.stroke();
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Bulb (Exp 1)
+        function drawBulb(x, y, intensity) {
+            ctx.save();
+            if (intensity > 0.05) {
+                const glowGrd = ctx.createRadialGradient(x, y - 10, 5, x, y - 10, 35 + intensity * 45);
+                glowGrd.addColorStop(0, `rgba(253, 224, 71, ${0.45 * intensity})`);
+                glowGrd.addColorStop(0.5, `rgba(234, 179, 8, ${0.15 * intensity})`);
+                glowGrd.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = glowGrd;
+                ctx.beginPath();
+                ctx.arc(x, y - 10, 80, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(x - 12, y + 5, 24, 15);
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(x - 9, y + 20, 18, 5);
+
+            ctx.strokeStyle = intensity > 0.1 ? '#fef08a' : '#475569';
+            ctx.lineWidth = 2.5;
+            ctx.fillStyle = intensity > 0.1 ? `rgba(254, 240, 138, ${0.1 + intensity*0.3})` : 'rgba(30, 41, 59, 0.5)';
+            ctx.beginPath();
+            ctx.arc(x, y - 10, 18, Math.PI * 0.25, Math.PI * 0.75, true);
+            ctx.lineTo(x - 12, y + 5);
+            ctx.lineTo(x + 12, y + 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.strokeStyle = intensity > 0.1 ? '#fbbf24' : '#64748b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x - 6, y + 5);
+            ctx.lineTo(x - 4, y - 8);
+            ctx.lineTo(x + 4, y - 8);
+            ctx.lineTo(x + 6, y + 5);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Compass (Exp 2)
+        function drawCompass(cx, cy, targetAngle) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 6;
+
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 22, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 18, 0, Math.PI*2);
+            ctx.fill();
+
+            // N (Red)
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(targetAngle);
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(0, -16);
+            ctx.lineTo(5, 0);
+            ctx.lineTo(-5, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            // S (Silver)
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.moveTo(0, 16);
+            ctx.lineTo(5, 0);
+            ctx.lineTo(-5, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+            ctx.restore();
+        }
+
+        // Terminal Label (Exp 2)
+        function drawTerminalPoleLabel(x, y, type) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = 6;
+            ctx.lineWidth = 2;
+
+            if (type === '+') {
+                ctx.fillStyle = '#ef4444'; 
+                ctx.strokeStyle = '#fca5a5';
+            } else if (type === '-') {
+                ctx.fillStyle = '#3b82f6'; 
+                ctx.strokeStyle = '#93c5fd';
+            } else {
+                ctx.fillStyle = '#475569'; 
+                ctx.strokeStyle = '#64748b';
+            }
+
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 13px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            if (type === '+') {
+                ctx.fillText('+', x, y);
+            } else if (type === '-') {
+                ctx.fillText('−', x, y);
+            } else {
+                ctx.fillText('0', x, y);
+            }
+
+            if (type !== '0') {
+                ctx.strokeStyle = type === '+' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(x, y, 16 + Math.sin(performance.now() * 0.007) * 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Physics B-Field Angle calculation
+        function calculateFieldAngle(x, y, current, wireType) {
+            if (current === 0) return 0;
+            let Bx = 0;
+            let By = -1.2; // Ambient Earth Field
+
+            const cx = width / 2;
+            const cy = height / 2;
+
+            if (wireType === 'straight') {
+                const dx = x - cx;
+                const dy = y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy + 100);
+                const strength = (current * 180) / dist;
+                Bx += (-dy / dist) * strength;
+                By += (dx / dist) * strength;
+            } else if (wireType === 'circular') {
+                const yTop = cy - 90;
+                const yBottom = cy + 90;
+
+                const dxT = x - cx;
+                const dyT = y - yTop;
+                const rT = Math.sqrt(dxT*dxT + dyT*dyT + 400);
+
+                const dxB = x - cx;
+                const dyB = y - yBottom;
+                const rB = Math.sqrt(dxB*dxB + dyB*dyB + 400);
+
+                const fT = (current * 220) / rT;
+                const fB = (-current * 220) / rB;
+
+                Bx += (-dyT / rT) * fT + (-dyB / rB) * fB;
+                By += (dxT / rT) * fT + (dxB / rB) * fB;
+            } else if (wireType === 'solenoid') {
+                const insideX = Math.abs(x - cx) < 140;
+                const insideY = Math.abs(y - cy) < 60;
+
+                if (insideX && insideY) {
+                    Bx += current * 5;
+                    By = 0;
+                } else {
+                    const dx = x - cx;
+                    const dy = y - cy;
+                    const r = Math.sqrt(dx*dx + dy*dy + 100);
+                    const dipoleFactor = (current * 80000) / (r*r*r);
+                    Bx += (3 * dx * dy / (r*r)) * dipoleFactor + (current * 2.0);
+                    By += (3 * dy * dy / (r*r) - 1) * dipoleFactor;
+                }
+            }
+            return Math.atan2(By, Bx) - Math.PI / 2;
+        }
+
+        // Draw Wire Fields (Exp 2)
+        function drawWireFieldLines(cx, cy, current, wireType) {
+            if (current === 0) return;
+            ctx.save();
+            const absCurrent = Math.abs(current);
+            const flowColor = current > 0 ? 'rgba(6, 182, 212, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+            ctx.strokeStyle = flowColor;
+            ctx.lineWidth = 1.5;
+
+            const timePhase = (performance.now() * 0.04 * (current > 0 ? 1 : -1));
+
+            if (wireType === 'straight') {
+                const radii = [45, 90, 140, 195];
+                radii.forEach((r, idx) => {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.globalAlpha = 0.08 * absCurrent * (4 - idx);
+                    ctx.stroke();
+
+                    ctx.fillStyle = current > 0 ? '#22d3ee' : '#f87171';
+                    ctx.globalAlpha = 0.4 * absCurrent;
+                    for (let a = 0; a < 3; a++) {
+                        const angle = (timePhase * (0.5 / (idx + 1)) + (a * Math.PI * 2 / 3)) % (Math.PI * 2);
+                        const dotX = cx + r * Math.cos(angle);
+                        const dotY = cy + r * Math.sin(angle);
+                        ctx.beginPath();
+                        ctx.arc(dotX, dotY, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            } else if (wireType === 'circular') {
+                const poleYTop = cy - 90;
+                const poleYBottom = cy + 90;
+                const loopRadii = [30, 60, 100];
+
+                loopRadii.forEach((r, idx) => {
+                    ctx.beginPath();
+                    ctx.arc(cx, poleYTop, r, 0, Math.PI * 2);
+                    ctx.arc(cx, poleYBottom, r, 0, Math.PI * 2);
+                    ctx.globalAlpha = 0.08 * absCurrent * (3 - idx);
+                    ctx.stroke();
+
+                    ctx.fillStyle = current > 0 ? '#22d3ee' : '#f87171';
+                    ctx.globalAlpha = 0.5 * absCurrent;
+                    
+                    const flowAngleT = (timePhase * 0.3) % (Math.PI * 2);
+                    const flowAngleB = (-timePhase * 0.3) % (Math.PI * 2);
+
+                    ctx.beginPath();
+                    ctx.arc(cx + r * Math.cos(flowAngleT), poleYTop + r * Math.sin(flowAngleT), 2.5, 0, Math.PI*2);
+                    ctx.arc(cx + r * Math.cos(flowAngleB), poleYBottom + r * Math.sin(flowAngleB), 2.5, 0, Math.PI*2);
+                    ctx.fill();
+                });
+
+                ctx.beginPath();
+                ctx.moveTo(cx - 250, cy);
+                ctx.lineTo(cx + 250, cy);
+                ctx.globalAlpha = 0.25 * absCurrent;
+                ctx.stroke();
+            } else if (wireType === 'solenoid') {
+                const pathsY = [-30, -15, 0, 15, 30];
+                pathsY.forEach((offsetY, idx) => {
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 160, cy + offsetY);
+                    ctx.lineTo(cx + 160, cy + offsetY);
+                    ctx.globalAlpha = 0.15 * absCurrent;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, 210, 100 + idx*25, 0, 0, Math.PI * 2);
+                    ctx.globalAlpha = 0.05 * absCurrent;
+                    ctx.stroke();
+                });
+            }
+            ctx.restore();
+        }
+
+        // Primary animation tick
+        function tick() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            }
+            for (let y = 0; y < height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            }
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            if (activeTab === 'exp1') {
+                // --- EXPERIMENT 1 ---
+                const now = performance.now();
+                const deltaTime = (now - exp1State.lastTime) / 1000;
+                
+                if (deltaTime > 0) {
+                    const dx = exp1State.magnetX - exp1State.lastX;
+                    exp1State.magnetSpeed = dx / deltaTime;
+                    exp1State.lastX = exp1State.magnetX;
+                    exp1State.lastTime = now;
+                }
+
+                const distanceToCoil = exp1State.magnetX - centerX;
+                const inRange = Math.abs(distanceToCoil) < 180;
+                let inducedEMF = 0;
+
+                if (inRange && Math.abs(exp1State.magnetSpeed) > 10) {
+                    const distribution = Math.exp(-Math.pow(distanceToCoil / 90, 2));
+                    const strengthFactor = exp1State.magnetStrength * 0.7;
+                    const turnsFactor = exp1State.coilTurns / 200;
+                    const speedFactor = exp1State.magnetSpeed / 800;
+                    const polarityFactor = exp1State.magnetPolarity === 'NS' ? -1 : 1;
+
+                    inducedEMF = speedFactor * distribution * strengthFactor * turnsFactor * polarityFactor;
+                    inducedEMF += (Math.random() - 0.5) * 0.05 * Math.abs(speedFactor);
+                }
+
+                exp1State.inducedCurrent = exp1State.inducedCurrent * 0.85 + inducedEMF * 0.15;
+                if (Math.abs(exp1State.inducedCurrent) < 0.005) exp1State.inducedCurrent = 0;
+
+                const maxAngle = Math.PI / 4;
+                const targetAngle = exp1State.inducedCurrent * maxAngle * 4;
+                exp1State.galvanometerAngle = exp1State.galvanometerAngle * 0.7 + targetAngle * 0.3;
+                exp1State.sparkIntensity = Math.min(1.0, Math.abs(exp1State.inducedCurrent) * 5);
+
+                if (exp1State.showField) {
+                    drawFieldLines(exp1State.magnetX, exp1State.magnetY, exp1State.magnetStrength, exp1State.magnetPolarity, '#818cf8');
+                }
+
+                drawCoil(centerX, centerY, exp1State.coilTurns);
+                drawMagnet(exp1State.magnetX, exp1State.magnetY, exp1State.magnetPolarity);
+                drawCoilFront(centerX, centerY, exp1State.coilTurns);
+
+                drawGalvanometer(centerX - 110, centerY + 195, exp1State.galvanometerAngle);
+                drawBulb(centerX + 110, centerY + 185, exp1State.sparkIntensity);
+
+                // UI Status Update
+                const isN = exp1State.magnetPolarity === 'NS';
+                const approaching = exp1State.magnetSpeed > 10;
+                const leaving = exp1State.magnetSpeed < -10;
+
+                let movementStateText = "대기 상태";
+                if (approaching) movementStateText = isN ? "코일로 N극 접근 중" : "코일로 S극 접근 중";
+                if (leaving) movementStateText = isN ? "코일에서 S극 이탈 중" : "코일에서 N극 이탈 중";
+
+                document.getElementById('stat-primary').innerText = `자석 동작: ${movementStateText}`;
+                document.getElementById('stat-secondary').innerText = `자기선속 변화율 (dΦ/dt): ${(exp1State.inducedCurrent * 2.5).toFixed(2)} Wb/s`;
+                document.getElementById('stat-tertiary').innerText = `유도 전류 (I): ${(exp1State.inducedCurrent * 120).toFixed(1)} mA`;
+
+            } else {
+                // --- EXPERIMENT 2 ---
+                const curVal = exp2State.currentValue;
+                const flowColor = curVal > 0 ? '#06b6d4' : (curVal < 0 ? '#ef4444' : '#475569');
+
+                let poleTopType = '0';
+                let poleBottomType = '0';
+                let poleLeftType = '0';
+                let poleRightType = '0';
+
+                if (curVal > 0) {
+                    poleTopType = '+'; poleBottomType = '−'; poleLeftType = '+'; poleRightType = '−';
+                } else if (curVal < 0) {
+                    poleTopType = '−'; poleBottomType = '+'; poleLeftType = '−'; poleRightType = '+';
+                }
+
+                if (exp2State.showWireField) {
+                    drawWireFieldLines(centerX, centerY, curVal, currentWireType);
+                }
+
+                ctx.save();
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if (currentWireType === 'straight') {
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.lineWidth = 14;
+                    ctx.beginPath(); ctx.moveTo(centerX, 40); ctx.lineTo(centerX, height - 40); ctx.stroke();
+
+                    ctx.strokeStyle = flowColor;
+                    ctx.lineWidth = 6;
+                    ctx.beginPath(); ctx.moveTo(centerX, 40); ctx.lineTo(centerX, height - 40); ctx.stroke();
+
+                    if (curVal !== 0) {
+                        ctx.fillStyle = flowColor;
+                        const direction = curVal > 0 ? -1 : 1;
+                        const arrowY = (performance.now() * 0.05 * direction) % 120 + centerY;
+                        for (let offset = -180; offset <= 180; offset += 120) {
+                            let currY = arrowY + offset;
+                            if (currY > 50 && currY < height - 50) {
+                                ctx.beginPath();
+                                ctx.moveTo(centerX - 8, currY);
+                                ctx.lineTo(centerX, currY + (8 * direction));
+                                ctx.lineTo(centerX + 8, currY);
+                                ctx.closePath(); ctx.fill();
+                            }
+                        }
+                    }
+                    drawTerminalPoleLabel(centerX, 30, poleTopType === '+' ? '+' : (poleTopType === '−' ? '-' : '0'));
+                    drawTerminalPoleLabel(centerX, height - 30, poleBottomType === '+' ? '+' : (poleBottomType === '−' ? '-' : '0'));
+
+                } else if (currentWireType === 'circular') {
+                    // Back loop
+                    ctx.strokeStyle = '#111827';
+                    ctx.lineWidth = 12;
+                    ctx.beginPath(); ctx.ellipse(centerX, centerY, 35, 90, 0, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke();
+
+                    ctx.strokeStyle = flowColor;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.ellipse(centerX, centerY, 35, 90, 0, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke();
+
+                    // Front loop
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.lineWidth = 14;
+                    ctx.beginPath(); ctx.ellipse(centerX, centerY, 35, 90, 0, Math.PI * 1.5, Math.PI * 0.5); ctx.stroke();
+
+                    ctx.strokeStyle = flowColor;
+                    ctx.lineWidth = 6;
+                    ctx.beginPath(); ctx.ellipse(centerX, centerY, 35, 90, 0, Math.PI * 1.5, Math.PI * 0.5); ctx.stroke();
+
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY - 90, 5, 0, Math.PI*2);
+                    ctx.arc(centerX, centerY + 90, 5, 0, Math.PI*2);
+                    ctx.fill();
+
+                    drawTerminalPoleLabel(centerX - 35, centerY - 90, poleTopType === '+' ? '+' : (poleTopType === '−' ? '-' : '0'));
+                    drawTerminalPoleLabel(centerX - 35, centerY + 90, poleBottomType === '+' ? '+' : (poleBottomType === '−' ? '-' : '0'));
+
+                } else if (currentWireType === 'solenoid') {
+                    const solenoidW = 280;
+                    const loops = 14;
+                    const startX = centerX - solenoidW/2;
+                    const spacing = solenoidW / loops;
+
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.lineWidth = 6;
+                    for (let i = 0; i < loops; i++) {
+                        const x = startX + i * spacing;
+                        ctx.beginPath(); ctx.arc(x, centerY, 45, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke();
+                    }
+
+                    ctx.strokeStyle = flowColor;
+                    ctx.lineWidth = 3;
+                    for (let i = 0; i < loops; i++) {
+                        const x = startX + i * spacing;
+                        ctx.beginPath(); ctx.arc(x, centerY, 45, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(x + spacing/2, centerY, 45, Math.PI * 1.5, Math.PI * 0.5); ctx.stroke();
+                    }
+
+                    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, centerY + 45); ctx.lineTo(startX, centerY + 80);
+                    ctx.moveTo(startX + solenoidW, centerY + 45); ctx.lineTo(startX + solenoidW, centerY + 80);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = flowColor; ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, centerY + 45); ctx.lineTo(startX, centerY + 80);
+                    ctx.moveTo(startX + solenoidW, centerY + 45); ctx.lineTo(startX + solenoidW, centerY + 80);
+                    ctx.stroke();
+
+                    drawTerminalPoleLabel(startX, centerY + 85, poleLeftType === '+' ? '+' : (poleLeftType === '−' ? '-' : '0'));
+                    drawTerminalPoleLabel(startX + solenoidW, centerY + 85, poleRightType === '+' ? '+' : (poleRightType === '−' ? '-' : '0'));
+                }
+                ctx.restore();
+
+                if (exp2State.showCompass) {
+                    exp2State.compasses.forEach(comp => {
+                        const fieldAngle = calculateFieldAngle(comp.x, comp.y, curVal, currentWireType);
+                        comp.angle = comp.angle * 0.8 + fieldAngle * 0.2;
+                        drawCompass(comp.x, comp.y, comp.angle);
+                    });
+                }
+
+                const curDirectionText = curVal > 0 ? "순방향 전류 공급 중 (+)" : (curVal < 0 ? "역방향 전류 공급 중 (-)" : "전류 차단됨 (0)");
+                document.getElementById('stat-primary').innerText = `전원 공급: ${curDirectionText}`;
+                document.getElementById('stat-secondary').innerText = `중심부 자기장 세기 (B): ${(Math.abs(curVal) * 1.4).toFixed(1)} mT`;
+                document.getElementById('stat-tertiary').innerText = `공급 전류량 (I): ${(Math.abs(curVal) * 5.0).toFixed(1)} A`;
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            tick();
+        });
+    </script>
+</body>
+</html>
